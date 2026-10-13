@@ -3,7 +3,7 @@
 // JAVASCRIPT: BILINGUAL ENGINE, CONTINUOUS SCROLL, DYNAMIC ANIMATIONS & LIGHTBOX
 // ==========================================================================
 
-const translations = {
+var translations = window.translations = {
   en: {
     // Navigation
     "nav_name": "Hazem Ahmed Ali",
@@ -553,7 +553,7 @@ const translations = {
   }
 };
 
-let currentLang = 'en';
+var currentLang = window.currentLang || 'en';
 
 // Switch Language
 function setLanguage(lang) {
@@ -573,7 +573,8 @@ function setLanguage(lang) {
     }
   });
 
-  localStorage.setItem('hazem_portfolio_lang', lang);
+  try { localStorage.setItem('hazem_portfolio_lang', lang); } catch (e) {}
+  if (typeof syncNavbarHeight === 'function') setTimeout(syncNavbarHeight, 30);
 }
 
 function toggleLanguage() {
@@ -600,53 +601,127 @@ function filterProjects(country) {
   });
 }
 
-// Lightbox Modal
-let currentLightboxList = [];
-let currentLightboxIndex = -1;
+// High-Resolution Error-Free Lightbox Modal with Zoom Controls
+var currentZoom = 1;
 
-function openLightbox(imgSrc, title, desc) {
-  const modal = document.getElementById('lightboxModal');
-  const img = document.getElementById('lightboxImg');
-  const titleEl = document.getElementById('lightboxTitle');
-  const descEl = document.getElementById('lightboxDesc');
-
-  if (modal && img) {
-    img.src = imgSrc;
-    if (titleEl) titleEl.textContent = title || 'Technical Drawing Sheet';
-    if (descEl) descEl.textContent = desc || 'Hazem Ahmed Ali — Structural BIM Portfolio High-Resolution View';
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+function applyLightboxZoom() {
+  var img = document.getElementById('lightboxImg');
+  var lbl = document.getElementById('lightboxZoomLevel');
+  if (img) {
+    if (currentZoom === 1) {
+      img.style.width = '';
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '76vh';
+      img.style.cursor = 'zoom-in';
+    } else {
+      img.style.maxWidth = 'none';
+      img.style.maxHeight = 'none';
+      img.style.width = Math.round(currentZoom * 100) + '%';
+      img.style.cursor = 'zoom-out';
+    }
+  }
+  if (lbl) {
+    lbl.textContent = Math.round(currentZoom * 100) + '%';
   }
 }
 
+function zoomLightbox(delta) {
+  currentZoom = Math.min(3, Math.max(0.5, +(currentZoom + delta).toFixed(2)));
+  applyLightboxZoom();
+}
+
+function resetLightboxZoom() {
+  currentZoom = 1;
+  applyLightboxZoom();
+}
+
+function toggleLightboxZoom() {
+  currentZoom = (currentZoom === 1) ? 1.75 : 1;
+  applyLightboxZoom();
+}
+
+function openLightbox(target, title, desc) {
+  var modal = document.getElementById('lightboxModal');
+  var img = document.getElementById('lightboxImg');
+  var titleEl = document.getElementById('lightboxTitle');
+  var descEl = document.getElementById('lightboxDesc');
+  if (!modal || !img) return false;
+
+  var foundImg = null;
+  var card = null;
+  if (typeof target === 'string' && target.indexOf('data:image/') === 0) {
+    img.src = target;
+  } else if (target && target.nodeType === 1) {
+    if (target.classList.contains('hero-image-frame') || target.classList.contains('nav-avatar-box')) {
+      return false;
+    }
+    foundImg = (target.tagName === 'IMG') ? target : target.querySelector('img');
+    card = target.closest('.project-detailed-card, .drawing-card');
+    if (!foundImg && card) {
+      foundImg = card.querySelector('img');
+    }
+    if (!foundImg || !foundImg.src || foundImg.src.indexOf('data:image/') !== 0) {
+      return false;
+    }
+    img.src = foundImg.src;
+  } else {
+    return false;
+  }
+
+  if (!title && card) {
+    var tEl = card.querySelector('.card-title, .drawing-title');
+    if (tEl) title = tEl.textContent.trim();
+  }
+  if (!desc && card) {
+    var dEl = card.querySelector('.card-typology, .drawing-desc');
+    if (dEl) desc = dEl.textContent.trim();
+  }
+
+  if (titleEl) titleEl.textContent = title || 'Technical Drawing Sheet';
+  if (descEl) descEl.textContent = desc || 'Hazem Ahmed Ali — Structural BIM Portfolio High-Resolution View';
+
+  currentZoom = 1;
+  applyLightboxZoom();
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  return false;
+}
+
 function closeLightbox() {
-  const modal = document.getElementById('lightboxModal');
+  var modal = document.getElementById('lightboxModal');
   if (modal) {
     modal.classList.remove('active');
     document.body.style.overflow = '';
   }
 }
 
-// Keyboard controls
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     closeLightbox();
   }
 });
 
+// Keep sticky navigator aligned flush below navbar on all screen sizes
+function syncNavbarHeight() {
+  var navbar = document.querySelector('.navbar');
+  if (navbar) {
+    document.documentElement.style.setProperty('--navbar-height', navbar.offsetHeight + 'px');
+  }
+}
+
+window.addEventListener('resize', syncNavbarHeight);
+
 // Scroll Progress Bar & Scrollspy
-window.addEventListener('scroll', () => {
-  // Update progress bar
-  const winScroll = document.documentElement.scrollTop || document.body.scrollTop;
-  const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-  const scrolled = (winScroll / height) * 100;
-  const progressBar = document.getElementById('scrollProgressBar');
+window.addEventListener('scroll', function() {
+  var winScroll = document.documentElement.scrollTop || document.body.scrollTop;
+  var height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  var scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+  var progressBar = document.getElementById('scrollProgressBar');
   if (progressBar) {
     progressBar.style.width = scrolled + '%';
   }
 
-  // Scrollspy for Navigator Pills
-  const sections = [
+  var sections = [
     { id: 'section-3d', pill: '3d' },
     { id: 'section-ifc', pill: 'ifc' },
     { id: 'section-shop', pill: 'shop' },
@@ -657,48 +732,56 @@ window.addEventListener('scroll', () => {
     { id: 'section-certs', pill: 'certs' }
   ];
 
-  const scrollPos = window.scrollY + 180;
-  sections.forEach(sec => {
-    const el = document.getElementById(sec.id);
-    const pills = document.querySelectorAll(`.nav-pill-btn[data-section="${sec.pill}"]`);
+  var scrollPos = window.scrollY + 180;
+  sections.forEach(function(sec) {
+    var el = document.getElementById(sec.id);
+    var pills = document.querySelectorAll('.nav-pill-btn[data-section="' + sec.pill + '"]');
     if (el && pills.length) {
-      const top = el.offsetTop;
-      const height = el.offsetHeight;
-      if (scrollPos >= top && scrollPos < top + height) {
-        pills.forEach(p => p.classList.add('active'));
+      var top = el.offsetTop;
+      var h = el.offsetHeight;
+      if (scrollPos >= top && scrollPos < top + h) {
+        pills.forEach(function(p) { p.classList.add('active'); });
       } else {
-        pills.forEach(p => p.classList.remove('active'));
+        pills.forEach(function(p) { p.classList.remove('active'); });
       }
     }
   });
 });
 
-// IntersectionObserver for Scroll Reveals & Counters
-document.addEventListener('DOMContentLoaded', () => {
-  const savedLang = localStorage.getItem('hazem_portfolio_lang') || 'en';
+// Initialize once even if both script.js and inline script are present
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.__HAZEM_PORTFOLIO_READY__) return;
+  window.__HAZEM_PORTFOLIO_READY__ = true;
+
+  var savedLang = 'en';
+  try {
+    savedLang = localStorage.getItem('hazem_portfolio_lang') || 'en';
+  } catch (e) {}
   setLanguage(savedLang);
+  syncNavbarHeight();
 
-  // Reveal elements on scroll
-  const revealElements = document.querySelectorAll('.reveal-on-scroll');
-  const revealObserver = new IntersectionObserver((entries, observer) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('is-visible');
-        observer.unobserve(entry.target);
-      }
+  var revealElements = document.querySelectorAll('.reveal-on-scroll');
+  if ('IntersectionObserver' in window) {
+    var revealObserver = new IntersectionObserver(function(entries, observer) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, {
+      root: null,
+      threshold: 0.1,
+      rootMargin: '0px 0px -40px 0px'
     });
-  }, {
-    root: null,
-    threshold: 0.1,
-    rootMargin: '0px 0px -40px 0px'
-  });
+    revealElements.forEach(function(el) { revealObserver.observe(el); });
+  } else {
+    revealElements.forEach(function(el) { el.classList.add('is-visible'); });
+  }
 
-  revealElements.forEach(el => revealObserver.observe(el));
-
-  // Filter buttons listener
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const country = btn.getAttribute('data-country');
+  document.querySelectorAll('.filter-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var country = btn.getAttribute('data-country');
       filterProjects(country);
     });
   });
